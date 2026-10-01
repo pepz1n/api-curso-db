@@ -6,6 +6,7 @@ cd "$(dirname "$0")"
 
 echo ">> Baixando a versão mais recente"
 git -C ../api-curso pull
+git -C ../api-curso-front pull
 git pull
 
 echo ">> Recriando os containers"

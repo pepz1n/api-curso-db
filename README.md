@@ -1,35 +1,40 @@
 # api-curso-db
 
-Docker do banco (PostgreSQL), da API de tarefas e do Nginx. Tudo roda na mesma EC2,
+Docker do banco (PostgreSQL), da API de tarefas, do front (Next.js) e do Nginx. Tudo roda na mesma EC2,
 só com Docker (sem PM2 e sem nada instalado direto no servidor além do Docker).
 
 ```
-Internet ──80──▶ nginx ──▶ api:3000 ──▶ db:5432
-                 (público)  (só interno)  (só interno)
+Internet ──80──▶ nginx ─┬─ /api/* ──▶ api:3000 ──▶ db:5432
+                 (público)└─ /*     ──▶ front:3000
 ```
 
 * **nginx**: proxy reverso, única porta aberta para a internet (80).
-* **api**: só acessível pelo Nginx ou de dentro do servidor (`curl localhost:3000`).
+* **front**: site em Next.js, em `/`. Direto (sem Nginx) só de dentro do servidor: `localhost:3001`.
+* **api**: em `/api/...` (o Nginx remove o `/api`). Direto só de dentro do servidor: `localhost:3000`.
 * **db**: só acessível pela API ou de dentro do servidor (`psql` na porta `DB_PORT_HOST`).
 
 ```
 curso/
-├── api-curso/       # código da API (tem o Dockerfile da API)
-└── api-curso-db/    # este repositório: banco + docker-compose
+├── api-curso/        # código da API (tem o Dockerfile da API)
+├── api-curso-db/     # este repositório: banco + Nginx + docker-compose
+└── api-curso-front/  # front em Next.js (tem o Dockerfile do front)
 ```
 
-As duas pastas precisam ficar lado a lado, porque o compose monta a API a partir de `../api-curso`.
+As três pastas precisam ficar lado a lado, porque o compose monta a API a partir de `../api-curso`.
 
 ## Rodar local
 
 ```bash
 cp .env.example .env      # trocar senha e TOKEN_KEY
 docker compose up -d --build
-curl http://localhost/health        # pelo Nginx
+# site:  http://localhost/
+curl http://localhost/api/health    # API pelo Nginx
 curl http://localhost:3000/health   # direto na API
 ```
 
 ## Deploy na EC2 (Ubuntu)
+
+> Guia completo, com Elastic IP, CloudFront na frente e solução de problemas: **[DEPLOY-AWS.md](DEPLOY-AWS.md)**.
 
 1. **Security Group da instância:**
    * SSH (22): somente "My IP"
@@ -61,7 +66,7 @@ curl http://localhost:3000/health   # direto na API
    ```
    Os containers usam `restart: unless-stopped`: voltam sozinhos se caírem ou se a EC2 reiniciar.
 
-5. **Testar:** `http://IP_PUBLICO/health` e as rotas do `requests.http` da API.
+5. **Testar:** abra `http://IP_PUBLICO/` no navegador e `http://IP_PUBLICO/api/health` no Postman.
 
 6. **Atualizar depois de um push:**
    ```bash
